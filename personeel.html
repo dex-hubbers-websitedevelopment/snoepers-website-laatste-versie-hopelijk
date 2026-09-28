@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Snoepers | Personeel</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Nunito:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f2fbf1;--card:#fff;--ink:#22402b;--muted:#4f6b57;--green:#9edcaa;--pink:#ff9fcb;--pinkd:#c2337a;--line:#cfe9d3;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#15241a;--card:#1f3527;--ink:#eaf7ee;--muted:#b6d1bd;--line:#35533f;--pinkd:#ff8cc0;color-scheme:dark}}
+*{box-sizing:border-box}
+html{height:100%}
+body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font:17px/1.6 Nunito,system-ui,sans-serif;display:flex;flex-direction:column;padding:env(safe-area-inset-top,0px) 16px env(safe-area-inset-bottom,0px)}
+h1{font:600 1.5rem Fredoka,sans-serif;margin:0 0 .3em}
+.wrap{max-width:420px;margin:0 auto;width:100%;padding:32px 0;flex:1;display:flex;flex-direction:column;justify-content:center}
+.card{background:var(--card);border:2px solid var(--line);border-radius:20px;padding:26px}
+.muted{color:var(--muted);font-size:.92rem}
+label{display:block;font-weight:700;margin-bottom:6px}
+input[type=password]{font:inherit;width:100%;padding:11px 12px;border:2px solid var(--line);border-radius:12px;background:var(--bg);color:var(--ink)}
+.btn{display:inline-block;background:var(--green);color:#22402b;font:600 1rem Fredoka,sans-serif;padding:11px 22px;border:0;border-radius:999px;cursor:pointer;width:100%;margin-top:14px}
+.btn:hover{filter:brightness(.95)}
+.err{color:var(--pinkd);font-weight:700;font-size:.9rem;min-height:1.2em;margin-top:8px}
+#panel{display:none}
+#panel.show{display:block}
+#login.hide{display:none}
+.status-row{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:18px 0}
+.switch{position:relative;width:58px;height:32px;flex:none}
+.switch input{opacity:0;width:0;height:0}
+.slider{position:absolute;inset:0;background:var(--green);border-radius:999px;cursor:pointer;transition:background .2s}
+.slider::before{content:"";position:absolute;width:26px;height:26px;left:3px;top:3px;background:#fff;border-radius:50%;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+input:checked+.slider{background:var(--pinkd)}
+input:checked+.slider::before{transform:translateX(26px)}
+#label{font-weight:700}
+#since{font-size:.9rem;color:var(--muted);margin-top:-8px}
+.note{font-size:.85rem;color:var(--muted);margin-top:18px;border-top:1px dashed var(--line);padding-top:14px}
+a.back{font-size:.9rem;font-weight:700;color:var(--pinkd);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Snoepers · Personeel</h1>
+
+  <div id="login" class="card">
+    <p class="muted">Alleen voor beheer en personeel. Vul het wachtwoord in om de status van de winkel te wijzigen.</p>
+    <label for="pw">Wachtwoord</label>
+    <input id="pw" type="password" autocomplete="current-password">
+    <button class="btn" id="loginBtn" type="button">Inloggen</button>
+    <p class="err" id="loginErr"></p>
+  </div>
+
+  <div id="panel" class="card">
+    <p class="muted">Zet dit alleen aan als je <strong>eerder dan de normale sluitingstijd</strong> dichtgaat, bijvoorbeeld bij een rustig uur of slecht weer.</p>
+    <div class="status-row">
+      <span id="label">Nu volgens schema</span>
+      <label class="switch">
+        <input type="checkbox" id="toggle">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <p id="since"></p>
+    <p class="err" id="toggleErr"></p>
+    <p class="note">Vergeet niet dit weer uit te zetten bij de volgende opening. Deze pagina staat niet in het menu van de website.</p>
+    <p style="margin-top:18px"><a class="back" href="/">← Terug naar de website</a></p>
+  </div>
+</div>
+
+<script>
+var API='/api/status';
+var pw='';
+
+function setBusy(b){document.getElementById('toggle').disabled=b}
+
+function paint(data){
+  var t=document.getElementById('toggle');
+  t.checked=!!data.closed;
+  document.getElementById('label').textContent=data.closed?'Nu handmatig dicht':'Nu volgens schema';
+  document.getElementById('since').textContent=data.closed&&data.since
+    ? 'Dicht sinds '+new Date(data.since).toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'})
+    : '';
+}
+
+function loadStatus(){
+  fetch(API).then(function(r){return r.json()}).then(paint).catch(function(){
+    document.getElementById('toggleErr').textContent='Status kon niet worden geladen.';
+  });
+}
+
+document.getElementById('loginBtn').addEventListener('click',function(){
+  pw=document.getElementById('pw').value;
+  if(!pw){document.getElementById('loginErr').textContent='Vul een wachtwoord in.';return}
+  // Eerste keer meteen proberen te wisselen met huidige stand testen we niet; we accepteren
+  // het wachtwoord lokaal en laten de server controleren zodra je de schakelaar gebruikt.
+  document.getElementById('login').classList.add('hide');
+  document.getElementById('panel').classList.add('show');
+  document.getElementById('loginErr').textContent='';
+  loadStatus();
+});
+
+document.getElementById('toggle').addEventListener('change',function(e){
+  var closed=e.target.checked;
+  setBusy(true);
+  document.getElementById('toggleErr').textContent='';
+  fetch(API,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({password:pw,closed:closed})
+  }).then(function(r){
+    if(!r.ok){throw new Error(r.status===401?'Onjuist wachtwoord.':'Opslaan mislukt.')}
+    return r.json();
+  }).then(function(data){
+    paint(data);
+  }).catch(function(err){
+    e.target.checked=!closed;
+    document.getElementById('toggleErr').textContent=err.message;
+    if(String(err.message).indexOf('wachtwoord')>-1){
+      document.getElementById('panel').classList.remove('show');
+      document.getElementById('login').classList.remove('hide');
+    }
+  }).finally(function(){setBusy(false)});
+});
+</script>
+</body>
+</html>
