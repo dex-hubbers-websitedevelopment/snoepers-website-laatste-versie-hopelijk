@@ -1,4 +1,4 @@
-api/import { kv } from '@vercel/kv';
+/import { kv } from '@vercel/kv';
 
 const KEY = 'snoepers-status';
 
