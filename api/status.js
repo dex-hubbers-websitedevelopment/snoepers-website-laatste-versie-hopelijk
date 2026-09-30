@@ -1,10 +1,15 @@
-/import { kv } from '@vercel/kv';
+import { Redis } from '@upstash/redis';
+
+const redis = new Redis({
+  url: process.env.KV_REST_API_URL,
+  token: process.env.KV_REST_API_TOKEN
+});
 
 const KEY = 'snoepers-status';
 
 export default async function handler(req, res) {
   if (req.method === 'GET') {
-    const data = (await kv.get(KEY)) || { closed: false, since: null };
+    const data = (await redis.get(KEY)) || { closed: false, since: null };
     res.setHeader('Cache-Control', 'no-store');
     return res.status(200).json(data);
   }
@@ -18,7 +23,7 @@ export default async function handler(req, res) {
       closed: !!closed,
       since: closed ? new Date().toISOString() : null
     };
-    await kv.set(KEY, data);
+    await redis.set(KEY, data);
     return res.status(200).json(data);
   }
 
